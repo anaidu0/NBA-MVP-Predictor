@@ -4,24 +4,25 @@ This project predicts the National Basketball Association's MVP Award given a da
 # Details
 In order to use this algorithm, replace the 'final_2018_stats.csv' file with your own stats dataset in the data folder. Then update the following line of code by replacing the file name.
 ```
-In [44]:
 # loads the current data to make the prediction for the year 2018
 current_data = os.path.join('data','final_2018_stats.csv')
 current_stats_df = pd.read_csv(current_data)
 ```
-The model is contained in the file: Final MVP Predictor.ipynb
+The model is contained in the file: MVPModel.py
 
 # Prediction
 The 2018 MVP was sucessfully predicted.
 
 ```
-In [85]:
-find_MVP(prediction_df) # calls the method to print the predicted MVP
+# Model can be changed by replacing the 'LRModel' with the 'SequentialModel'
+find_MVP(LRModel, final_df, players)  # finds MVP 
 
 The MVP from the inputted dataset is: James Harden
 ```
 
 # Built With
 * Python
+* Keras
+* Numpy
 * scikit-learn
 * Pandas
