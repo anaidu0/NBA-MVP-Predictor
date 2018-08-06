@@ -58,7 +58,7 @@ def sequential_model(X, y):
     model = Sequential()
     model.add(Dense(25, input_dim=19, activation='relu'))  # input_dim stores the value 19 for features in the model
     model.add(Dense(19, activation='relu'))
-    model.add(Dense(1, activation='sigmoid'))
+    model.add(Dense(1, activation='relu'))
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     # Fit the model
     model.fit(x, y, epochs=25, batch_size=20)  # runs through 25 epochs with batch sizes of 20
