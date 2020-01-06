@@ -1,3 +1,4 @@
+import tweepy
 import pandas as pd
 import numpy as np
 import os
@@ -6,6 +7,17 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from keras.models import Sequential
 from keras.layers import Dense
+
+
+#TWITTER SETUP
+consumer_key = "JNNCxcKHxR2rdaLd9EgznRu4U"
+consumer_secret = "MuRA1OtAKWg2XKkB63UsHm5Yc5ABanAKI8lIssOlVoc1Ib1aXV"
+access_token = "1190422262924509184-8TCqOqduqVkm7GpjaFbnojcXADdhBh"
+access_token_secret = "2LoItn5r03GYhxpS1YspV58NuJhkspRx3cA8DgVIwNJu4"
+
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+api = tweepy.API(auth)
 
 # satisfies unknown error
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -28,16 +40,24 @@ X = df.drop(['Player'], axis=1)
 X = X.drop(['Year'], axis=1)
 
 
-
-
 # Formats the current data set to fit the model
-current_data = os.path.join('data', 'final_2020_stats.csv')
-current_stats_df = pd.read_csv(current_data)
-current_stats_df.replace('', np.nan, inplace=True)
-current_stats_df.dropna(inplace=True)
-players = current_stats_df['Player']
-current_stats_df = current_stats_df.drop(['Player'], axis=1)
-final_df = current_stats_df.drop(['Year'], axis=1)
+def get_stats():
+    current_data = os.path.join('data', 'final_2020_stats.csv')
+    current_stats_df = pd.read_csv(current_data)
+    current_stats_df.replace('', np.nan, inplace=True)
+    current_stats_df.dropna(inplace=True)
+    current_stats_df = current_stats_df.drop(['Player'], axis=1)
+    final_df = current_stats_df.drop(['Year'], axis=1)
+    return final_df
+
+# gets tha plyer names and returns a dataframe with just the players
+def get_players():
+    current_data = os.path.join('data', 'final_2020_stats.csv')
+    current_stats_df = pd.read_csv(current_data)
+    current_stats_df.replace('', np.nan, inplace=True)
+    current_stats_df.dropna(inplace=True)
+    players = current_stats_df['Player']
+    return players
 
 # This function creates the logistic regression model
 # works best for final MVP prediction after the season ends
@@ -62,7 +82,6 @@ def random_forest(X, y):
     predictions = classifier.predict_proba(X_test)
     return clf
 
-
 # This is a customized model using Keras
 def sequential_model(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, stratify=y)
@@ -85,7 +104,9 @@ def sequential_model(X, y):
     return model
 
 
-def ModelHelper(model, df, players):
+# runs the given model on the given dataset and finds the MVP candidates by matching up the index with the players df
+def find_MVP_candidates(model, df, players):
+    mvps = []
     predictions = model.predict_proba(df)
     # print(stats.describe(predictions))
     pd.DataFrame(predictions).to_csv("probabilities.csv")
@@ -94,9 +115,22 @@ def ModelHelper(model, df, players):
     prediction_df = pd.read_csv('prediction.csv')
     for player in prediction_df.head().itertuples():
         player_name = players.iloc[player[1]]
-        print(player_name)
+        mvps.append(player_name)
+    return mvps
 
-# SequentialModel = sequential_model(X,y)
-# LRModel = lr_model(X, y)
-RandomForest = random_forest(X, y)
-ModelHelper(RandomForest, final_df, players)
+
+def main():
+    players = get_players()
+    final_df = get_stats()
+    # SequentialModel = sequential_model(X,y)
+    # LRModel = lr_model(X, y)
+    RandomForest = random_forest(X, y)
+    candidates = find_MVP_candidates(RandomForest, final_df, players)
+    msg = "Today's 2020 NBA MVP Rankings:\n"
+    for i, mvp in enumerate(candidates):
+        msg += str(i+1) + ". " + mvp + "\n"
+    print(msg)
+    # api.update_status(msg)
+
+if __name__=="__main__":
+    main()
