@@ -1,12 +1,26 @@
+import tweepy
 import pandas as pd
 import numpy as np
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
-from sklearn import metrics
+from sklearn.ensemble import RandomForestClassifier
 from keras.models import Sequential
 from keras.layers import Dense
+
+
+#TWITTER SETUP
+consumer_key = ""
+consumer_secret = ""
+access_token = ""
+access_token_secret = ""
+
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+api = tweepy.API(auth)
+
+# satisfies unknown error
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 # Loads the player data into a pandas dataframe
 player_data = os.path.join('data', 'edited_stats.csv')
@@ -25,26 +39,48 @@ y = df['MVP']  # Stores MVP list in this dataframe
 X = df.drop(['Player'], axis=1)
 X = X.drop(['Year'], axis=1)
 
-# Formats the current data set to fit the model
-current_data = os.path.join('data', 'final_2018_stats.csv')
-current_stats_df = pd.read_csv(current_data)
-current_stats_df.replace('', np.nan, inplace=True)
-current_stats_df.dropna(inplace=True)
-players = current_stats_df['Player']
-current_stats_df = current_stats_df.drop(['Player'], axis=1)
-final_df = current_stats_df.drop(['Year'], axis=1)
 
+# Formats the current data set to fit the model
+def get_stats():
+    current_data = os.path.join('data', 'final_2020_stats.csv')
+    current_stats_df = pd.read_csv(current_data)
+    current_stats_df.replace('', np.nan, inplace=True)
+    current_stats_df.dropna(inplace=True)
+    current_stats_df = current_stats_df.drop(['Player'], axis=1)
+    final_df = current_stats_df.drop(['Year'], axis=1)
+    return final_df
+
+# gets tha plyer names and returns a dataframe with just the players
+def get_players():
+    current_data = os.path.join('data', 'final_2020_stats.csv')
+    current_stats_df = pd.read_csv(current_data)
+    current_stats_df.replace('', np.nan, inplace=True)
+    current_stats_df.dropna(inplace=True)
+    players = current_stats_df['Player']
+    return players
 
 # This function creates the logistic regression model
+# works best for final MVP prediction after the season ends
 def lr_model(X, y):
     X = X.drop(['MVP'], axis=1)
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0, stratify=y)
     model = LogisticRegression()
     model.fit(X_train, y_train)
-    predictions = model.predict(X_test)
-    print("Logistic Regression Accuracy:", accuracy_score(y_test, predictions))  # prints the accuracy of the model
+    predictions = model.predict_proba(X_test)
+    print(X.columns.values)
+    print(model.coef_)
+    # print("Logistic Regression Accuracy:", accuracy_score(y_test, predictions))  # prints the accuracy of the model
     return model
 
+# creates a random forest classifier, seems to work better for printing out the top 5 candidates
+# also works better for mid season data
+def random_forest(X, y):
+    X = X.drop(['MVP'], axis=1)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+    clf = RandomForestClassifier(n_estimators=100, max_depth=None)
+    classifier = clf.fit(X_train, y_train)
+    predictions = classifier.predict_proba(X_test)
+    return clf
 
 # This is a customized model using Keras
 def sequential_model(X, y):
@@ -68,23 +104,33 @@ def sequential_model(X, y):
     return model
 
 
-# This function exports the MVP predictions to a CSV file and locates the MVP
-def find_MVP(model, df, players):
-    # Converts dataframe to numpy array if the model is not the LRModel
-    if model != LRModel:
-        data_array = df.values
-        current_prediction = model.predict(data_array)
-    else:
-        current_prediction = model.predict(df)
-    # exports predictions to csv file
-    prediction = pd.DataFrame(current_prediction, columns=['MVP']).to_csv('prediction.csv')
+# runs the given model on the given dataset and finds the MVP candidates by matching up the index with the players df
+def find_MVP_candidates(model, df, players):
+    mvps = []
+    predictions = model.predict_proba(df)
+    # print(stats.describe(predictions))
+    pd.DataFrame(predictions).to_csv("probabilities.csv")
+    top5 = pd.DataFrame(predictions).nlargest(5, 1)
+    prediction = pd.DataFrame(top5, columns=['Not MVP', 'MVP Chance']).to_csv('prediction.csv')
     prediction_df = pd.read_csv('prediction.csv')
-    # locates the MVP from the csv file
-    location_MVP = prediction_df.loc[prediction_df['MVP'] == 1].index[0]
-    player_name = players.iloc[location_MVP]
-    print("The MVP from the inputted dataset is:", player_name.split('\\')[0])
+    for player in prediction_df.head().itertuples():
+        player_name = players.iloc[player[1]]
+        mvps.append(player_name)
+    return mvps
 
 
-SequentialModel = sequential_model(X,y)
-LRModel = lr_model(X, y)
-find_MVP(LRModel, final_df, players)  # finds MVP
+def main():
+    players = get_players()
+    final_df = get_stats()
+    # SequentialModel = sequential_model(X,y)
+    # LRModel = lr_model(X, y)
+    RandomForest = random_forest(X, y)
+    candidates = find_MVP_candidates(RandomForest, final_df, players)
+    msg = "Today's 2020 NBA MVP Rankings:\n"
+    for i, mvp in enumerate(candidates):
+        msg += str(i+1) + ". " + mvp + "\n"
+    print(msg)
+    # api.update_status(msg)
+
+if __name__=="__main__":
+    main()
