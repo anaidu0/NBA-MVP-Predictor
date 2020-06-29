@@ -10,10 +10,10 @@ from keras.layers import Dense
 
 
 #TWITTER SETUP
-consumer_key = "JNNCxcKHxR2rdaLd9EgznRu4U"
-consumer_secret = "MuRA1OtAKWg2XKkB63UsHm5Yc5ABanAKI8lIssOlVoc1Ib1aXV"
-access_token = "1190422262924509184-8TCqOqduqVkm7GpjaFbnojcXADdhBh"
-access_token_secret = "2LoItn5r03GYhxpS1YspV58NuJhkspRx3cA8DgVIwNJu4"
+consumer_key = ""
+consumer_secret = ""
+access_token = ""
+access_token_secret = ""
 
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
